@@ -1,17 +1,17 @@
 from pydantic import BaseModel
 import qdrant_client
 from llama_index.vector_stores.qdrant import QdrantVectorStore
-from llama_index.embeddings import OpenAIEmbedding
-from llama_index.llms import OpenAI
-from llama_index.schema import Document
-from llama_index import (
-    VectorStoreIndex,
-    ServiceContext,
-)
+from llama_index.embeddings.ollama import OllamaEmbedding
+from llama_index.llms.ollama import Ollama
+from llama_index.core import VectorStoreIndex, Settings
+from llama_index.core.schema import Document
 from dataclasses import dataclass
 import os
 
-key = os.environ['OPENAI_API_KEY']
+# Ollama configuration (runs locally, no API key needed)
+OLLAMA_BASE_URL = os.environ.get('OLLAMA_BASE_URL', 'http://localhost:11434')
+LLM_MODEL = os.environ.get('LLM_MODEL', 'llama3')
+EMBED_MODEL = os.environ.get('EMBED_MODEL', 'nomic-embed-text')
 
 @dataclass
 class Input:
@@ -62,18 +62,21 @@ class QdrantService:
     
     def connect(self) -> None:
         client = qdrant_client.QdrantClient(location=":memory:")
-                
+
         vstore = QdrantVectorStore(client=client, collection_name='temp')
 
-        service_context = ServiceContext.from_defaults(
-            embed_model=OpenAIEmbedding(),
-            llm=OpenAI(api_key=key, model="gpt-4")
-            )
+        # Configure global settings with Ollama (runs locally, no API key needed)
+        Settings.embed_model = OllamaEmbedding(
+            model_name=EMBED_MODEL,
+            base_url=OLLAMA_BASE_URL
+        )
+        Settings.llm = Ollama(
+            model=LLM_MODEL,
+            base_url=OLLAMA_BASE_URL,
+            request_timeout=120.0
+        )
 
-        self.index = VectorStoreIndex.from_vector_store(
-            vector_store=vstore, 
-            service_context=service_context
-            )
+        self.index = VectorStoreIndex.from_vector_store(vector_store=vstore)
 
     def load(self, docs = list[Document]):
         self.index.insert_nodes(docs)

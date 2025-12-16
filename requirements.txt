@@ -1,2 +1,9 @@
-pydantic==2.5.3
-# add additional modules here
+pydantic>=2.7.0
+# llama-index packages (modular structure as of 2024)
+llama-index-core>=0.11.0
+llama-index-vector-stores-qdrant>=0.3.0
+llama-index-embeddings-ollama>=0.2.0
+llama-index-llms-ollama>=0.2.0
+# dependencies
+qdrant-client>=1.9.0
+fastapi>=0.109.0
