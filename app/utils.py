@@ -1,17 +1,30 @@
 from pydantic import BaseModel
 import qdrant_client
 from llama_index.vector_stores.qdrant import QdrantVectorStore
-from llama_index.embeddings.ollama import OllamaEmbedding
-from llama_index.llms.ollama import Ollama
+from llama_index.embeddings.huggingface import HuggingFaceEmbedding
+from llama_index.llms.groq import Groq
 from llama_index.core import VectorStoreIndex, Settings
 from llama_index.core.schema import Document
+from llama_index.core.query_engine import CitationQueryEngine
+from llama_index.core.prompts import PromptTemplate
 from dataclasses import dataclass
+
+CITATION_QA_TEMPLATE = PromptTemplate(
+    "You are an expert on the Laws of the Seven Kingdoms. "
+    "Answer the question directly based on the sources provided. "
+    "Cite sources using [1], [2], etc. Be specific and confident.\n\n"
+    "Sources:\n"
+    "{context_str}\n\n"
+    "Question: {query_str}\n\n"
+    "Answer: "
+)
+import fitz  # PyMuPDF
+import re
 import os
 
-# Ollama configuration (runs locally, no API key needed)
-OLLAMA_BASE_URL = os.environ.get('OLLAMA_BASE_URL', 'http://localhost:11434')
-LLM_MODEL = os.environ.get('LLM_MODEL', 'llama3')
-EMBED_MODEL = os.environ.get('EMBED_MODEL', 'nomic-embed-text')
+# Configuration
+EMBED_MODEL = os.environ.get('EMBED_MODEL', 'BAAI/bge-small-en-v1.5')
+GROQ_MODEL = os.environ.get('GROQ_MODEL', 'llama-3.3-70b-versatile')
 
 @dataclass
 class Input:
@@ -22,6 +35,7 @@ class Input:
 class Citation:
     source: str
     text: str
+    relevance_score: float  # Similarity score from vector search (0-1)
 
 class Output(BaseModel):
     query: str
@@ -29,31 +43,34 @@ class Output(BaseModel):
     citations: list[Citation]
 
 class DocumentService:
+    """Load PDF and create Document objects, one per law section."""
 
-    """
-    Update this service to load the pdf and extract its contents.
-    The example code below will help with the data structured required
-    when using the QdrantService.load() method below. Note: for this
-    exercise, ignore the subtle difference between llama-index's 
-    Document and Node classes (i.e, treat them as interchangeable).
+    def __init__(self, pdf_path: str = "docs/laws.pdf"):
+        self.pdf_path = pdf_path
 
-    # example code
-    def create_documents() -> list[Document]:
+    def create_documents(self) -> list[Document]:
+        # Extract text from PDF
+        doc = fitz.open(self.pdf_path)
+        text = "\n".join(page.get_text() for page in doc)
+        doc.close()
 
-        docs = [
-            Document(
-                metadata={"Section": "Law 1"},
-                text="Theft is punishable by hanging",
-            ),
-            Document(
-                metadata={"Section": "Law 2"},
-                text="Tax evasion is punishable by banishment.",
-            ),
-        ]
+        # Split by section numbers (e.g., "1.1.", "3.1.1.", "10.1.1.1.")
+        # Pattern captures: section number and content until next section
+        pattern = r'(\d+(?:\.\d+)+)\.\s*\n(.*?)(?=\d+(?:\.\d+)*\.\s*\n|$)'
+        matches = re.findall(pattern, text, re.DOTALL)
 
-        return docs
+        documents = []
+        for section_num, content in matches:
+            content = content.strip().replace('\n', ' ')
+            if not content:
+                continue
 
-     """
+            documents.append(Document(
+                text=content,
+                metadata={"section": section_num}
+            ))
+
+        return documents
 
 class QdrantService:
     def __init__(self, k: int = 2):
@@ -65,48 +82,43 @@ class QdrantService:
 
         vstore = QdrantVectorStore(client=client, collection_name='temp')
 
-        # Configure global settings with Ollama (runs locally, no API key needed)
-        Settings.embed_model = OllamaEmbedding(
-            model_name=EMBED_MODEL,
-            base_url=OLLAMA_BASE_URL
-        )
-        Settings.llm = Ollama(
-            model=LLM_MODEL,
-            base_url=OLLAMA_BASE_URL,
-            request_timeout=120.0
-        )
+        # Configure global settings
+        Settings.embed_model = HuggingFaceEmbedding(model_name=EMBED_MODEL)
+        Settings.llm = Groq(model=GROQ_MODEL)
 
         self.index = VectorStoreIndex.from_vector_store(vector_store=vstore)
 
-    def load(self, docs = list[Document]):
+    def load(self, docs: list[Document]) -> None:
         self.index.insert_nodes(docs)
     
     def query(self, query_str: str) -> Output:
+        """Query the index and return response with citations."""
+        query_engine = CitationQueryEngine.from_args(
+            self.index,
+            similarity_top_k=self.k,
+            citation_chunk_size=512,
+            citation_qa_template=CITATION_QA_TEMPLATE,
+        )
 
-        """
-        This method needs to initialize the query engine, run the query, and return
-        the result as a pydantic Output class. This is what will be returned as
-        JSON via the FastAPI endpount. Fee free to do this however you'd like, but
-        a its worth noting that the llama-index package has a CitationQueryEngine...
+        response = query_engine.query(query_str)
 
-        Also, be sure to make use of self.k (the number of vectors to return based
-        on semantic similarity).
+        # Extract citations from source nodes with relevance scores
+        citations = []
+        for node in response.source_nodes:
+            section = node.node.metadata.get("section", "Unknown")
+            # node.score contains the similarity score from vector search
+            score = node.score if node.score is not None else 0.0
+            citations.append(Citation(
+                source=f"Section {section}",
+                text=node.node.text[:500],  # Truncate long texts
+                relevance_score=round(score, 3)
+            ))
 
-        # Example output object
-        citations = [
-            Citation(source="Law 1", text="Theft is punishable by hanging"),
-            Citation(source="Law 2", text="Tax evasion is punishable by banishment."),
-        ]
-
-        output = Output(
-            query=query_str, 
-            response=response_text, 
+        return Output(
+            query=query_str,
+            response=str(response),
             citations=citations
-            )
-        
-        return output
-
-        """
+        )
        
 
 if __name__ == "__main__":
@@ -119,8 +131,3 @@ if __name__ == "__main__":
     index.load() # implemented
 
     index.query("what happens if I steal?") # NOT implemented
-
-
-
-
-

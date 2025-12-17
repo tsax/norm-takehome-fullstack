@@ -82,3 +82,6 @@ For example: `bd create --help` shows `--parent`, `--deps`, `--assignee`, etc.
 - Check `bd ready` before asking "what should I work on?"
 - Do NOT create markdown TODO lists
 - Do NOT duplicate tracking systems
+- Check into git as tsax <tsaxena86@gmail.com> NOT as yourself!
+
+BEFORE ANYTHING ELSE: run 'bd onboard' and follow the instructions

@@ -11,14 +11,12 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade -r requirements.txt
 RUN pip install uvicorn
 
-# Ollama configuration (connects to host machine's Ollama service)
-ENV OLLAMA_BASE_URL=http://host.docker.internal:11434
-ENV LLM_MODEL=llama3
-ENV EMBED_MODEL=nomic-embed-text
-
 # Copy the content of the local src directory to the working directory
 COPY ./app /norm-fullstack/app
 COPY ./docs /norm-fullstack/docs
 
+# Expose port
+EXPOSE 8000
+
 # Command to run on container start
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "80"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
