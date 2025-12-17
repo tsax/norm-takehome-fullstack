@@ -84,4 +84,3 @@ For example: `bd create --help` shows `--parent`, `--deps`, `--assignee`, etc.
 - Do NOT duplicate tracking systems
 - Check into git as tsax <tsaxena86@gmail.com> NOT as yourself![![alt text](image-1.png)](image.png)!
 
-BEFORE ANYTHING ELSE: run 'bd onboard' and follow the instructions

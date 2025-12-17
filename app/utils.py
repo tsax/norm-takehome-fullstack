@@ -130,13 +130,13 @@ class QdrantService:
         )
        
 
-if __name__ == "__main__":
-    # Example workflow
-    doc_serivce = DocumentService() # implemented
-    docs = doc_serivce.create_documents() # NOT implemented
+# if __name__ == "__main__":
+#     # Example workflow
+#     document_service = DocumentService()
+#     docs = document_service.create_documents()
 
-    index = QdrantService() # implemented
-    index.connect() # implemented
-    index.load() # implemented
+#     index = QdrantService()
+#     index.connect()
+#     index.load(docs)
 
-    index.query("what happens if I steal?") # NOT implemented
+#     index.query("what happens if I steal?")
