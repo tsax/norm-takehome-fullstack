@@ -1,0 +1,62 @@
+My own reflections
+
+
+What unique challenges do you foresee in developing and integrating AI regulatory agents for legal 
+compliance from a full-stack perspective? How would you address these challenges to make the system 
+robust and user-friendly? 
+ 
+Your response should reflect your current ideas and we request that you refrain from using GenAI tools for this 
+section (but feel free to use any other resource). We have included a summary of Norm’s mission below, 
+which should be helpful as you think through your response.  
+Our mission: 
+ 
+Norm Ai is automating compliance processes, making them more efficient, cost-effective, and accurate than 
+ever before, while also ensuring democratic guardrails for AI in autonomous roles. By converting complex 
+regulations into intelligent AI programs, we enable compliance teams to operate with unprecedented speed 
+and precision. Our vision extends beyond just assisting compliance teams; we aim to enable the integration of 
+AI agents into daily life, ensuring that AI-driven business processes adhere to legal and societal norms 
+through adoption of our Regulatory AI agents as oversight. At Norm Ai, we're committed to aligning AI with 
+public policy, reflecting our society's collective will, and ushering in a new era of regulatory intelligence and 
+societal-AI alignment. 
+ 
+
+---
+From a full-stack perspective, I can think of a few domains we need to keep in mind
+while developing and integrating AI regulatory agents:
+
+- Data accuracy and legal liability
+    - All AI/LLM work on human language is stochastic. Since the law is a serious endeavor 
+    with potentially catastrophic downsides to inaccuracy, we especially need to think of
+    citations, just like I developed in this particular take home assignment. All evaluations
+    by regulatory agents should come with citations of exact policies/rulesets for later
+    reference.
+    - While I'm not an expert here, I think there's probably a way to do human-level evaluation
+    of the AI regulatory agent's accuracy, and feeding it back to the model.
+
+- Explainability and auditability
+    - Just like for accuracy and liability, we can include structured citations for every decision
+    - If we store model versions, document versions, the query and retrieval parameters, we should be able to
+    reconstruct any decision made by the AI regulatory agent.
+    - Audit logging generally
+
+- Handling ambiguous/conflicting regulations
+    - Ambiguity can be decomposed into multiple interpretations, each of which can be evaluated
+    separately. The AI regulatory agent can then present these interpretations to the user
+    for final decision-making.
+    - Conflicting regulations can be flagged for human review, with the AI providing context
+    on the nature of the conflict and potential resolutions based on precedent or expert input.
+
+- User trust and adoption
+    - Transparency in decision-making, as mentioned above, is key to building trust.
+
+- Security and access control
+    - Strict role based access control to sensitive regulatory data and AI outputs.
+    - Encryption of data at rest and in transit.
+    - Regular security audits and compliance checks.
+    - Tenant isolation for multi-organization deployments.
+
+Closing Thoughts
+The core challenge is building systems that are accurate enough to trust, transparent enough to audit, 
+and ergonomic enough to adopt. I would approach this by designing the backend to produce verifiable, 
+structured evidence alongside each answer, and designing the frontend to make that evidence easy to inspect 
+and act on—treating “trust” as an explicit end-to-end requirement rather than a byproduct of model choice.
