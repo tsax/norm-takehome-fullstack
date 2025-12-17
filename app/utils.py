@@ -106,12 +106,21 @@ class QdrantService:
         citations = []
         for node in response.source_nodes:
             section = node.node.metadata.get("section", "Unknown")
-            # node.score contains the similarity score from vector search
-            score = node.score if node.score is not None else 0.0
+            # CitationQueryEngine may store score differently - try multiple approaches
+            score = None
+            if hasattr(node, 'score') and node.score is not None:
+                score = node.score
+            elif hasattr(node, 'get_score'):
+                try:
+                    score = node.get_score()
+                except:
+                    pass
+            # Default to 0.0 if no score available (CitationQueryEngine re-chunks nodes)
+            score = score if score is not None else 0.0
             citations.append(Citation(
                 source=f"Section {section}",
                 text=node.node.text[:500],  # Truncate long texts
-                relevance_score=round(score, 3)
+                relevance_score=round(float(score), 3)
             ))
 
         return Output(
